@@ -32,12 +32,12 @@ export default function WaifuProtocol() {
 
   // Chat State
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, role: 'assistant', text: '¡Bienvenido, Senpai! ¿Listo para dominar el día? No olvides tus prácticas.' }
+    { id: 1, role: 'assistant', text: '¡Bienvenido, Senpai! ¿Listo para dominar el día? Mis sistemas de IA están en línea. 🤖❤️' }
   ]);
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Efecto de inicialización (para evitar errores de hidratación)
+  // Efecto de inicialización
   useEffect(() => {
     setMounted(true);
     const saved = localStorage.getItem('waifu-habits');
@@ -46,7 +46,6 @@ export default function WaifuProtocol() {
     const today = new Date().toDateString();
 
     if (savedDate !== today) {
-      // Nuevo día: resetear hábitos pero mantener racha si ayer se cumplió
       localStorage.setItem('waifu-date', today);
     } else if (saved) {
       setHabits(JSON.parse(saved));
@@ -106,22 +105,40 @@ export default function WaifuProtocol() {
     setMessages(prev => [...prev, { id: Date.now(), role, text }]);
   };
 
-  const handleSend = (e: React.FormEvent) => {
+  // --- NUEVA LÓGICA CONECTADA A GEMINI (BACKEND) ---
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    addMessage('user', input);
+
+    const userMsg = input;
+    addMessage('user', userMsg);
     setInput('');
     
-    // Simulación simple de IA (Placeholder)
-    setTimeout(() => {
-      const responses = [
-        "Estoy procesando esa solicitud... mentira, solo soy un script por ahora.",
-        "Recuerda: El código no se escribe solo.",
-        "¿Ya tomaste agua?",
-        "Esa idea para Ren'Py suena interesante."
-      ];
-      addMessage('assistant', responses[Math.floor(Math.random() * responses.length)]);
-    }, 1000);
+    try {
+      // Llamada a TU Backend (/api/chat)
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMsg }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        addMessage('assistant', data.reply);
+        
+        // Detector de "Easter Egg"
+        if (data.reply.includes("SCHOOL_V6")) {
+             console.log("🎒 Modo Escuela Activado en consola");
+        }
+      } else {
+        addMessage('assistant', 'Senpai, hubo un error de conexión con mis servidores... 😖');
+      }
+
+    } catch (error) {
+      console.error(error);
+      addMessage('assistant', 'Error crítico: No puedo conectar con el servidor.');
+    }
   };
 
   if (!mounted) return null;
@@ -172,15 +189,15 @@ export default function WaifuProtocol() {
                 className={`group relative p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
                   ${habit.completed 
                     ? 'bg-slate-900/80 border-transparent shadow-[0_0_20px_rgba(0,0,0,0.5)] opacity-50' 
-                    : `bg-slate-900 hover:bg-slate-800 ${habit.color.split(' ')[1]}` // border color hack
+                    : `bg-slate-900 hover:bg-slate-800 ${habit.color.split(' ')[1]}`
                   }
                   ${habit.completed ? 'grayscale' : ''}
                 `}
-                style={{ borderColor: habit.completed ? 'rgb(30 41 59)' : undefined }} // fallback border
+                style={{ borderColor: habit.completed ? 'rgb(30 41 59)' : undefined }}
               >
-                 <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity ${habit.completed ? 'hidden' : 'bg-white'}`} />
-                 
-                 <div className="flex items-start justify-between">
+                  <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity ${habit.completed ? 'hidden' : 'bg-white'}`} />
+                  
+                  <div className="flex items-start justify-between">
                     <div className={`p-3 rounded-xl bg-slate-950/50 ${habit.color.split(' ')[0]}`}>
                         {habit.icon}
                     </div>
@@ -189,14 +206,14 @@ export default function WaifuProtocol() {
                     `}>
                         {habit.completed && <Trophy size={14} className="text-white" />}
                     </div>
-                 </div>
-                 
-                 <div className="mt-4">
+                  </div>
+                  
+                  <div className="mt-4">
                     <h3 className={`text-lg font-bold ${habit.completed ? 'text-slate-500 line-through' : 'text-white'}`}>
                         {habit.title}
                     </h3>
                     <p className="text-slate-400 text-sm mt-1">{habit.desc}</p>
-                 </div>
+                  </div>
               </div>
             ))}
           </div>
@@ -213,7 +230,7 @@ export default function WaifuProtocol() {
                     <h3 className="font-bold text-white">Project Manager</h3>
                     <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        <span className="text-xs text-green-400">Online</span>
+                        <span className="text-xs text-green-400">Online (Gemini)</span>
                     </div>
                 </div>
             </div>
