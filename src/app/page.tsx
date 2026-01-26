@@ -5,7 +5,7 @@ import { Book, Gamepad2, Dumbbell, Send, Sparkles, Trophy, Flame } from 'lucide-
 import confetti from 'canvas-confetti';
 
 // --- CONTROL DE VERSIÓN ---
-const APP_VERSION = "v2.0 (Gemini Live Check)"; 
+const APP_VERSION = "v2.001 (Gemini Live Check)"; 
 
 // --- Tipos ---
 type Habit = {
