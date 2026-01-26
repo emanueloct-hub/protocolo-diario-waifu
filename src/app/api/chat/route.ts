@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
     // 3. Conectar a Google
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
 
     const systemInstruction = `
       Actúa como 'Waifu Protocol', una Project Manager estilo anime.
