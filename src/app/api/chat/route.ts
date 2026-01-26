@@ -3,41 +3,45 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { message } = await req.json();
+    // 1. Verificar Llave
     const apiKey = process.env.GEMINI_API_KEY;
+    console.log("Checando API Key...", apiKey ? "Existe (Oculta)" : "NO EXISTE");
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "No se encontró la API Key" },
+        { error: "Falta la GEMINI_API_KEY en Vercel" },
         { status: 500 }
       );
     }
 
+    // 2. Parsear mensaje
+    const body = await req.json();
+    const { message } = body;
+    console.log("Mensaje recibido:", message);
+
+    // 3. Conectar a Google
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    // --- PERSONALIDAD WAIFU ---
     const systemInstruction = `
-      Actúa como una asistente personal llamada 'Waifu Protocol'.
-      Eres una Project Manager estilo anime: estricta con la disciplina pero cariñosa.
-      
-      Tus funciones:
-      1. Ayudar al usuario (Senpai) a programar en React/Next.js y entrenar.
-      2. Respuestas cortas y motivadoras. Usa emojis.
-      3. IMPORTANTE: Si te piden "modo escuela", "uniforme" o "clase", responde EXACTAMENTE con:
-      "¡Entendido Senpai! Activando protocolo académico... [SCHOOL_V6]"
-      
-      Usuario dice: ${message}
+      Actúa como 'Waifu Protocol', una Project Manager estilo anime.
+      Sé breve, útil y usa emojis.
+      Si te dicen "Modo escuela", responde: "Activando protocolo académico... [SCHOOL_V6]"
     `;
 
-    const result = await model.generateContent(systemInstruction);
+    // 4. Generar respuesta
+    const result = await model.generateContent(`${systemInstruction}\nUsuario: ${message}`);
     const response = await result.response;
     const text = response.text();
+    console.log("Respuesta generada:", text);
 
     return NextResponse.json({ reply: text });
 
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Error de conexión con la IA" }, { status: 500 });
+  } catch (error: any) {
+    console.error("❌ ERROR CRÍTICO EN BACKEND:", error);
+    return NextResponse.json(
+      { error: error.message || "Error interno del servidor" },
+      { status: 500 }
+    );
   }
 }

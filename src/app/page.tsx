@@ -9,7 +9,7 @@ type Habit = {
   id: string;
   title: string;
   desc: string;
-  icon: React.ReactNode; // ReactNode no se puede guardar en localStorage
+  icon: React.ReactNode;
   color: string;
   completed: boolean;
   type: 'study' | 'project' | 'gym';
@@ -25,7 +25,7 @@ export default function WaifuProtocol() {
   const [mounted, setMounted] = useState(false);
   const [streak, setStreak] = useState(0);
 
-  // Definimos el estado inicial aquí para tener los iconos siempre frescos
+  // DEFINICIÓN INICIAL (La fuente de la verdad para los iconos)
   const INITIAL_HABITS: Habit[] = [
     { id: '1', title: 'Estudio: Web & IA', desc: '1h de Foco Absoluto', icon: <Book />, color: 'text-cyan-400 border-cyan-400 shadow-cyan-500/50', completed: false, type: 'study' },
     { id: '2', title: "Proyecto: Ren'Py", desc: 'Dev & Scripting', icon: <Gamepad2 />, color: 'text-pink-500 border-pink-500 shadow-pink-500/50', completed: false, type: 'project' },
@@ -41,7 +41,7 @@ export default function WaifuProtocol() {
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // --- EFECTO DE CARGA BLINDADO (SOLUCIÓN AL ERROR) ---
+  // --- EFECTO DE CARGA BLINDADO (La corrección clave) ---
   useEffect(() => {
     setMounted(true);
     
@@ -50,23 +50,23 @@ export default function WaifuProtocol() {
     const savedDate = localStorage.getItem('waifu-date');
     const today = new Date().toDateString();
 
-    // 1. Verificar cambio de día
+    // 1. Si es un nuevo día, reseteamos fecha (los hábitos se quedan en false por defecto)
     if (savedDate !== today) {
       localStorage.setItem('waifu-date', today);
-      // No cargamos hábitos viejos si es otro día, se quedan los iniciales (false)
     } 
-    // 2. Cargar datos si existen y es el mismo día
+    // 2. Si es el mismo día y hay datos guardados
     else if (savedHabits) {
       try {
         const parsedData = JSON.parse(savedHabits);
         
-        // AQUÍ ESTÁ LA MAGIA:
-        // No reemplazamos todo. Recorremos los hábitos iniciales (que tienen los iconos bien)
-        // y solo actualizamos el estado 'completed' si lo encontramos en localStorage.
+        // AQUÍ ESTÁ EL TRUCO: 
+        // No reemplazamos 'habits' con lo guardado (porque trae iconos rotos).
+        // En su lugar, recorremos los INITIAL_HABITS y solo actualizamos el check 'completed'.
         setHabits(currentHabits => {
           return currentHabits.map(habit => {
             const found = parsedData.find((p: any) => p.id === habit.id);
             if (found) {
+              // Solo copiamos el estado 'completed', el icono se queda el original
               return { ...habit, completed: found.completed };
             }
             return habit;
@@ -74,7 +74,7 @@ export default function WaifuProtocol() {
         });
 
       } catch (error) {
-        console.error("Error leyendo localStorage (reseteando datos corruptos):", error);
+        console.error("Error leyendo localStorage, reseteando para evitar pantalla blanca:", error);
         localStorage.removeItem('waifu-habits');
       }
     }
@@ -85,7 +85,7 @@ export default function WaifuProtocol() {
   // Efecto de Guardado
   useEffect(() => {
     if (mounted) {
-      // Guardamos todo, pero al cargar (arriba) solo leeremos lo necesario
+      // Guardamos todo en localStorage normalmente
       localStorage.setItem('waifu-habits', JSON.stringify(habits));
       localStorage.setItem('waifu-streak', streak.toString());
     }
@@ -115,7 +115,7 @@ export default function WaifuProtocol() {
       (h.type === 'gym' && isWeekend) ? true : h.completed
     );
 
-    // Solo lanzamos confeti si acabamos de terminar el último (y no estaba todo hecho ya)
+    // Evitar lanzar confeti si ya estaba todo completado desde antes (al recargar)
     const wasAlreadyDone = habits.every(h => (h.type === 'gym' && isWeekend) ? true : h.completed);
 
     if (allDone && !wasAlreadyDone) {
@@ -124,7 +124,6 @@ export default function WaifuProtocol() {
   };
 
   const triggerReward = () => {
-    // Protección try-catch para el confeti por si acaso
     try {
       confetti({
         particleCount: 150,
@@ -133,9 +132,8 @@ export default function WaifuProtocol() {
         colors: ['#22d3ee', '#ec4899', '#ef4444'] 
       });
     } catch (e) {
-      console.error("Error con confetti:", e);
+      console.error("Error lanzando confeti:", e);
     }
-    
     setStreak(s => s + 1);
     addMessage('assistant', '¡Increíble! Has completado el protocolo de hoy. Tu nivel de desarrollador ha subido. 🎉');
   };
