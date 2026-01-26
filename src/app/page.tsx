@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Book, Gamepad2, Dumbbell, Send, Sparkles, Trophy, Flame } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+// --- CONTROL DE VERSIÓN ---
+const APP_VERSION = "v2.0 (Gemini Live Check)"; 
+
 // --- Tipos ---
 type Habit = {
   id: string;
@@ -25,7 +28,7 @@ export default function WaifuProtocol() {
   const [mounted, setMounted] = useState(false);
   const [streak, setStreak] = useState(0);
 
-  // DEFINICIÓN INICIAL (La fuente de la verdad para los iconos)
+  // ESTADO INICIAL (Siempre fresco)
   const INITIAL_HABITS: Habit[] = [
     { id: '1', title: 'Estudio: Web & IA', desc: '1h de Foco Absoluto', icon: <Book />, color: 'text-cyan-400 border-cyan-400 shadow-cyan-500/50', completed: false, type: 'study' },
     { id: '2', title: "Proyecto: Ren'Py", desc: 'Dev & Scripting', icon: <Gamepad2 />, color: 'text-pink-500 border-pink-500 shadow-pink-500/50', completed: false, type: 'project' },
@@ -36,12 +39,12 @@ export default function WaifuProtocol() {
 
   // Chat State
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, role: 'assistant', text: '¡Bienvenido, Senpai! ¿Listo para dominar el día? Mis sistemas de IA están en línea. 🤖❤️' }
+    { id: 1, role: 'assistant', text: `Sistema en línea. Versión del núcleo: ${APP_VERSION}. ¿En qué te ayudo, Senpai? 🤖` }
   ]);
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // --- EFECTO DE CARGA BLINDADO (La corrección clave) ---
+  // --- EFECTO DE CARGA BLINDADO ---
   useEffect(() => {
     setMounted(true);
     
@@ -50,31 +53,21 @@ export default function WaifuProtocol() {
     const savedDate = localStorage.getItem('waifu-date');
     const today = new Date().toDateString();
 
-    // 1. Si es un nuevo día, reseteamos fecha (los hábitos se quedan en false por defecto)
     if (savedDate !== today) {
       localStorage.setItem('waifu-date', today);
-    } 
-    // 2. Si es el mismo día y hay datos guardados
-    else if (savedHabits) {
+    } else if (savedHabits) {
       try {
         const parsedData = JSON.parse(savedHabits);
-        
-        // AQUÍ ESTÁ EL TRUCO: 
-        // No reemplazamos 'habits' con lo guardado (porque trae iconos rotos).
-        // En su lugar, recorremos los INITIAL_HABITS y solo actualizamos el check 'completed'.
+        // Recuperación inteligente: Solo el estado completed, ignorando iconos rotos
         setHabits(currentHabits => {
           return currentHabits.map(habit => {
             const found = parsedData.find((p: any) => p.id === habit.id);
-            if (found) {
-              // Solo copiamos el estado 'completed', el icono se queda el original
-              return { ...habit, completed: found.completed };
-            }
+            if (found) return { ...habit, completed: found.completed };
             return habit;
           });
         });
-
       } catch (error) {
-        console.error("Error leyendo localStorage, reseteando para evitar pantalla blanca:", error);
+        console.error("Error leyendo localStorage:", error);
         localStorage.removeItem('waifu-habits');
       }
     }
@@ -85,13 +78,12 @@ export default function WaifuProtocol() {
   // Efecto de Guardado
   useEffect(() => {
     if (mounted) {
-      // Guardamos todo en localStorage normalmente
       localStorage.setItem('waifu-habits', JSON.stringify(habits));
       localStorage.setItem('waifu-streak', streak.toString());
     }
   }, [habits, streak, mounted]);
 
-  // Scroll automático del chat
+  // Scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -100,7 +92,6 @@ export default function WaifuProtocol() {
     const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
     const habitIndex = habits.findIndex(h => h.id === id);
     
-    // Lógica Gym Fin de Semana
     if (habits[habitIndex].type === 'gym' && isWeekend) {
         addMessage('assistant', 'Es fin de semana, Senpai. El descanso es parte del crecimiento. 💪');
         return;
@@ -110,32 +101,16 @@ export default function WaifuProtocol() {
     newHabits[habitIndex].completed = !newHabits[habitIndex].completed;
     setHabits(newHabits);
 
-    // Verificar si todo está completo para lanzar confeti
-    const allDone = newHabits.every(h => 
-      (h.type === 'gym' && isWeekend) ? true : h.completed
-    );
-
-    // Evitar lanzar confeti si ya estaba todo completado desde antes (al recargar)
+    const allDone = newHabits.every(h => (h.type === 'gym' && isWeekend) ? true : h.completed);
     const wasAlreadyDone = habits.every(h => (h.type === 'gym' && isWeekend) ? true : h.completed);
 
     if (allDone && !wasAlreadyDone) {
-      triggerReward();
+        try {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        } catch(e) { console.error(e); }
+        setStreak(s => s + 1);
+        addMessage('assistant', '¡Increíble! Protocolo completado. Nivel subido. 🎉');
     }
-  };
-
-  const triggerReward = () => {
-    try {
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#22d3ee', '#ec4899', '#ef4444'] 
-      });
-    } catch (e) {
-      console.error("Error lanzando confeti:", e);
-    }
-    setStreak(s => s + 1);
-    addMessage('assistant', '¡Increíble! Has completado el protocolo de hoy. Tu nivel de desarrollador ha subido. 🎉');
   };
 
   const addMessage = (role: 'user' | 'assistant', text: string) => {
@@ -161,17 +136,15 @@ export default function WaifuProtocol() {
 
       if (response.ok) {
         addMessage('assistant', data.reply);
-        
-        if (data.reply.includes("SCHOOL_V6")) {
-             console.log("🎒 Modo Escuela Activado en consola");
-        }
+        if (data.reply.includes("SCHOOL_V6")) console.log("🎒 Modo Escuela Activado");
       } else {
-        addMessage('assistant', 'Senpai, hubo un error de conexión con mis servidores... 😖');
+        // Mostramos el error real que viene del backend
+        addMessage('assistant', `Error del sistema: ${data.error || 'Fallo de conexión'} 😖`);
       }
 
     } catch (error) {
       console.error(error);
-      addMessage('assistant', 'Error crítico: No puedo conectar con el servidor.');
+      addMessage('assistant', 'Error crítico de red. No puedo contactar al servidor.');
     }
   };
 
@@ -183,15 +156,17 @@ export default function WaifuProtocol() {
     <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-pink-500/30">
       <div className="max-w-6xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* COLUMNA IZQUIERDA: TRACKER */}
+        {/* COLUMNA IZQUIERDA */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Header */}
           <header className="flex justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-2">
                 <Sparkles className="text-yellow-400" /> Protocolo Diario
               </h1>
-              <p className="text-slate-400 text-sm mt-1">{new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <div className="text-slate-400 text-sm mt-1 flex flex-col">
+                <span>{new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span className="text-xs text-cyan-600 font-mono mt-0.5">Build: {APP_VERSION}</span>
+              </div>
             </div>
             <div className="flex flex-col items-end">
                <div className="flex items-center gap-2 bg-orange-500/10 px-4 py-2 rounded-full border border-orange-500/20 text-orange-400 font-bold">
@@ -200,7 +175,6 @@ export default function WaifuProtocol() {
             </div>
           </header>
 
-          {/* Barra de Progreso */}
           <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
             <div className="flex justify-between mb-2 text-sm font-medium">
                 <span className="text-cyan-400">Sincronización del Sistema</span>
@@ -214,7 +188,6 @@ export default function WaifuProtocol() {
             </div>
           </div>
 
-          {/* Grid de Hábitos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {habits.map((habit) => (
               <div 
@@ -230,7 +203,6 @@ export default function WaifuProtocol() {
                 style={{ borderColor: habit.completed ? 'rgb(30 41 59)' : undefined }}
               >
                   <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity ${habit.completed ? 'hidden' : 'bg-white'}`} />
-                  
                   <div className="flex items-start justify-between">
                     <div className={`p-3 rounded-xl bg-slate-950/50 ${habit.color.split(' ')[0]}`}>
                         {habit.icon}
@@ -241,7 +213,6 @@ export default function WaifuProtocol() {
                         {habit.completed && <Trophy size={14} className="text-white" />}
                     </div>
                   </div>
-                  
                   <div className="mt-4">
                     <h3 className={`text-lg font-bold ${habit.completed ? 'text-slate-500 line-through' : 'text-white'}`}>
                         {habit.title}
@@ -253,58 +224,41 @@ export default function WaifuProtocol() {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA: WAIFU AI CHAT */}
+        {/* COLUMNA DERECHA */}
         <div className="h-[600px] lg:h-auto bg-slate-900 border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative">
-            {/* Chat Header */}
             <div className="bg-slate-950 p-4 border-b border-slate-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-xs font-bold ring-2 ring-purple-500/50">
-                    AI
-                </div>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-xs font-bold ring-2 ring-purple-500/50">AI</div>
                 <div>
                     <h3 className="font-bold text-white">Project Manager</h3>
                     <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        <span className="text-xs text-green-400">Online (Gemini)</span>
+                        <span className="text-xs text-green-400">Online (Gemini v2.0)</span>
                     </div>
                 </div>
             </div>
-
-            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                 {messages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed
-                            ${msg.role === 'user' 
-                                ? 'bg-cyan-600 text-white rounded-br-none' 
-                                : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-none shadow-lg'}
-                        `}>
-                            {msg.text}
-                        </div>
+                            ${msg.role === 'user' ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-none shadow-lg'}
+                        `}>{msg.text}</div>
                     </div>
                 ))}
                 <div ref={chatEndRef} />
             </div>
-
-            {/* Input Area */}
             <form onSubmit={handleSend} className="p-4 bg-slate-950 border-t border-slate-800">
                 <div className="relative">
                     <input 
-                        type="text" 
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        type="text" value={input} onChange={(e) => setInput(e.target.value)}
                         placeholder="Escribe tu estado..."
                         className="w-full bg-slate-900 text-white pl-4 pr-12 py-3 rounded-xl border border-slate-700 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder-slate-500 transition-all"
                     />
-                    <button 
-                        type="submit"
-                        className="absolute right-2 top-2 p-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg text-white hover:opacity-90 transition-opacity"
-                    >
+                    <button type="submit" className="absolute right-2 top-2 p-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg text-white hover:opacity-90 transition-opacity">
                         <Send size={18} />
                     </button>
                 </div>
             </form>
         </div>
-
       </div>
     </div>
   );
