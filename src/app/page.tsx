@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Book, Gamepad2, Dumbbell, Send, Sparkles, Trophy, Flame } from 'lucide-react';
+import { Book, Gamepad2, Dumbbell, Send, Sparkles, Trophy, Flame, Zap, Cpu } from 'lucide-react';
+// @ts-ignore
 import confetti from 'canvas-confetti';
 
 // --- CONTROL DE VERSIÓN ---
-const APP_VERSION = "v2.001 (Gemini Live Check)"; 
+const APP_VERSION = "v3.0 (Dual Core Waifu)"; 
 
 // --- Tipos ---
 type Habit = {
@@ -24,11 +25,22 @@ type Message = {
   text: string;
 };
 
+// Tipo para el estado del semáforo
+type SystemStatus = 'idle' | 'loading' | 'quota' | 'error';
+// Tipo para elegir cerebro
+type AIProvider = 'groq' | 'gemini';
+
 export default function WaifuProtocol() {
   const [mounted, setMounted] = useState(false);
   const [streak, setStreak] = useState(0);
 
-  // ESTADO INICIAL (Siempre fresco)
+  // ESTADO NUEVO: Controla qué IA estamos usando
+  const [provider, setProvider] = useState<AIProvider>('groq');
+  
+  // Estado del sistema: 'idle' (verde), 'loading' (azul), 'quota' (amarillo), 'error' (rojo)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>('idle');
+
+  // ESTADO INICIAL
   const INITIAL_HABITS: Habit[] = [
     { id: '1', title: 'Estudio: Web & IA', desc: '1h de Foco Absoluto', icon: <Book />, color: 'text-cyan-400 border-cyan-400 shadow-cyan-500/50', completed: false, type: 'study' },
     { id: '2', title: "Proyecto: Ren'Py", desc: 'Dev & Scripting', icon: <Gamepad2 />, color: 'text-pink-500 border-pink-500 shadow-pink-500/50', completed: false, type: 'project' },
@@ -39,12 +51,12 @@ export default function WaifuProtocol() {
 
   // Chat State
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, role: 'assistant', text: `Sistema en línea. Versión del núcleo: ${APP_VERSION}. ¿En qué te ayudo, Senpai? 🤖` }
+    { id: 1, role: 'assistant', text: `Sistema Híbrido ${APP_VERSION} activado. Usa el botón arriba para cambiar mi cerebro. 🤖` }
   ]);
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // --- EFECTO DE CARGA BLINDADO ---
+  // --- EFECTO DE CARGA ---
   useEffect(() => {
     setMounted(true);
     
@@ -58,7 +70,6 @@ export default function WaifuProtocol() {
     } else if (savedHabits) {
       try {
         const parsedData = JSON.parse(savedHabits);
-        // Recuperación inteligente: Solo el estado completed, ignorando iconos rotos
         setHabits(currentHabits => {
           return currentHabits.map(habit => {
             const found = parsedData.find((p: any) => p.id === habit.id);
@@ -67,7 +78,6 @@ export default function WaifuProtocol() {
           });
         });
       } catch (error) {
-        console.error("Error leyendo localStorage:", error);
         localStorage.removeItem('waifu-habits');
       }
     }
@@ -75,10 +85,14 @@ export default function WaifuProtocol() {
     if (savedStreak) setStreak(parseInt(savedStreak));
   }, []);
 
-  // Efecto de Guardado
+  // --- EFECTO DE GUARDADO ---
   useEffect(() => {
     if (mounted) {
-      localStorage.setItem('waifu-habits', JSON.stringify(habits));
+      const safeHabits = habits.map(h => ({
+        id: h.id,
+        completed: h.completed
+      }));
+      localStorage.setItem('waifu-habits', JSON.stringify(safeHabits));
       localStorage.setItem('waifu-streak', streak.toString());
     }
   }, [habits, streak, mounted]);
@@ -117,6 +131,7 @@ export default function WaifuProtocol() {
     setMessages(prev => [...prev, { id: Date.now(), role, text }]);
   };
 
+  // --- MANEJO DE ENVÍO CON SWITCH DE CEREBRO ---
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -124,27 +139,37 @@ export default function WaifuProtocol() {
     const userMsg = input;
     addMessage('user', userMsg);
     setInput('');
+    setSystemStatus('loading'); 
     
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg }),
+        // 🔥 AQUÍ LE DECIMOS AL BACKEND QUÉ CEREBRO USAR
+        body: JSON.stringify({ message: userMsg, provider: provider }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
         addMessage('assistant', data.reply);
+        
+        if (data.reply.includes("Límite") || data.reply.includes("429") || data.reply.includes("respirar")) {
+            setSystemStatus('quota');
+        } else {
+            setSystemStatus('idle');
+        }
+
         if (data.reply.includes("SCHOOL_V6")) console.log("🎒 Modo Escuela Activado");
       } else {
-        // Mostramos el error real que viene del backend
-        addMessage('assistant', `Error del sistema: ${data.error || 'Fallo de conexión'} 😖`);
+        addMessage('assistant', `Error del sistema (${provider}): ${data.error} 😖`);
+        setSystemStatus('error');
       }
 
     } catch (error) {
       console.error(error);
       addMessage('assistant', 'Error crítico de red. No puedo contactar al servidor.');
+      setSystemStatus('error');
     }
   };
 
@@ -224,17 +249,47 @@ export default function WaifuProtocol() {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA */}
+        {/* COLUMNA DERECHA (CHAT) */}
         <div className="h-[600px] lg:h-auto bg-slate-900 border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative">
-            <div className="bg-slate-950 p-4 border-b border-slate-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-xs font-bold ring-2 ring-purple-500/50">AI</div>
-                <div>
-                    <h3 className="font-bold text-white">Project Manager</h3>
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        <span className="text-xs text-green-400">Online (Gemini v2.0)</span>
+            <div className="bg-slate-950 p-4 border-b border-slate-800 flex items-center justify-between">
+                
+                {/* INFO DE LA WAIFU */}
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-xs font-bold ring-2 ring-purple-500/50">AI</div>
+                    <div>
+                        <h3 className="font-bold text-white">Waifu Protocol</h3>
+                        <div className="flex items-center gap-1.5 transition-all">
+                             <span className={`w-2 h-2 rounded-full animate-pulse
+                                ${systemStatus === 'idle' ? 'bg-green-500' : ''}
+                                ${systemStatus === 'loading' ? 'bg-cyan-400' : ''}
+                                ${systemStatus === 'quota' ? 'bg-amber-500' : ''}
+                                ${systemStatus === 'error' ? 'bg-red-600' : ''}
+                            `}></span>
+                            <span className="text-xs text-slate-400">
+                                {systemStatus === 'idle' && "Online"}
+                                {systemStatus === 'loading' && "Pensando..."}
+                                {systemStatus === 'quota' && "Enfriando..."}
+                                {systemStatus === 'error' && "Error"}
+                            </span>
+                        </div>
                     </div>
                 </div>
+
+                {/* --- BOTÓN DE SWITCH DE CEREBRO 🧠⚡ --- */}
+                <button 
+                    onClick={() => setProvider(p => p === 'groq' ? 'gemini' : 'groq')}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all hover:scale-105 active:scale-95
+                        ${provider === 'groq' 
+                            ? 'bg-orange-500/10 border-orange-500 text-orange-400 hover:bg-orange-500/20' 
+                            : 'bg-blue-500/10 border-blue-500 text-blue-400 hover:bg-blue-500/20'
+                        }
+                    `}
+                >
+                    {provider === 'groq' ? <Zap size={14} /> : <Cpu size={14} />}
+                    {provider === 'groq' ? 'GROQ (Fast)' : 'GEMINI (Brain)'}
+                </button>
+                {/* ------------------------------------- */}
+
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                 {messages.map((msg) => (
@@ -250,7 +305,7 @@ export default function WaifuProtocol() {
                 <div className="relative">
                     <input 
                         type="text" value={input} onChange={(e) => setInput(e.target.value)}
-                        placeholder="Escribe tu estado..."
+                        placeholder={`Hablar con ${provider === 'groq' ? 'Groq' : 'Gemini'}...`}
                         className="w-full bg-slate-900 text-white pl-4 pr-12 py-3 rounded-xl border border-slate-700 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder-slate-500 transition-all"
                     />
                     <button type="submit" className="absolute right-2 top-2 p-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg text-white hover:opacity-90 transition-opacity">
