@@ -3,7 +3,9 @@ import Groq from "groq-sdk";
 import { NextResponse } from "next/server";
 
 // Inicializamos ambos motores
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ 
+  apiKey: process.env.GROQ_API_KEY || "dummy_key_for_build" 
+});
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: Request) {
