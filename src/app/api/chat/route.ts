@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import Groq from "groq-sdk";
 import { NextResponse } from "next/server";
 
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     let reply = "";
     console.log(`🚀 Motor seleccionado: ${activeProvider.toUpperCase()}`);
 
-    // --- OPCIÓN 1: GROQ ---
+    // --- OPCIÓN 1: GROQ (Llama 3) ---
     if (activeProvider === 'groq') {
       const chatCompletion = await groq.chat.completions.create({
         messages: [
@@ -41,18 +41,12 @@ export async function POST(req: Request) {
       reply = chatCompletion.choices[0]?.message?.content || "";
     } 
     
-    // --- OPCIÓN 2: GEMINI ---
+    // --- OPCIÓN 2: GEMINI (Google) ---
     else if (activeProvider === 'gemini') {
       try {
-        // Intentamos usar el modelo
+        // 🔥 ACTUALIZACIÓN: Usamos el modelo que SÍ tienes en tu lista
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.0-flash-exp", // O el que estés usando
-            safetySettings: [
-            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            ],
+            model: "gemini-flash-latest" 
         });
 
         const result = await model.generateContent(`${systemPrompt}\nUsuario: ${message}`);
@@ -60,17 +54,27 @@ export async function POST(req: Request) {
         reply = response.text();
 
       } catch (geminiError: any) {
-        // 🚨 AQUÍ ATRAPAMOS EL ERROR DE GEMINI ESPECÍFICAMENTE
-        console.warn("⚠️ Error interno de Gemini:", geminiError.message);
+        console.warn("⚠️ Falló Gemini 2.0:", geminiError.message);
 
-        if (geminiError.message.includes("429") || geminiError.message.includes("Quota")) {
-            // EN LUGAR DE ERROR, DEVOLVEMOS UN MENSAJE AMIGABLE
+        // Fallback de emergencia a la versión "Lite" si la Flash falla
+        if (geminiError.message.includes("404") || geminiError.message.includes("not found")) {
+            try {
+                console.log("🔄 Intentando con Gemini 2.0 Flash Lite...");
+                const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+                const fallbackResult = await fallbackModel.generateContent(`${systemPrompt}\nUsuario: ${message}`);
+                reply = fallbackResult.response.text();
+            } catch (e) {
+                return NextResponse.json({ reply: "🚫 Error: Gemini no responde hoy. Usa Groq. 😵" });
+            }
+        } 
+        else if (geminiError.message.includes("429") || geminiError.message.includes("Quota")) {
             return NextResponse.json({ 
-                reply: "🚫 **Sistema Gemini Sobrecargado**: Senpai, Google me cortó la inspiración (Límite de cuota). 😓\n\nPor favor, **cámbiame a modo GROQ** con el botón de arriba o espera unos minutos." 
+                reply: "🚫 **Gemini Sobrecargado**: Límite de cuota. Cámbiame a modo GROQ. 😓" 
             });
+        } 
+        else {
+            throw geminiError;
         }
-        // Si es otro error raro, dejamos que explote normal abajo
-        throw geminiError;
       }
     }
 
@@ -78,7 +82,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error(`❌ ERROR GENERAL:`, error);
-    // Error genérico para otros fallos
     return NextResponse.json(
       { error: `Fallo del sistema: ${error.message}` },
       { status: 500 }

@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -6,37 +5,30 @@ export async function GET() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "No hay API Key" });
 
-    // Esto no sirve en el SDK de cliente, asi que probaremos 'a mano'
-    // cual responde con un "Hola".
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    const candidates = [
-      "gemini-2.0-flash-exp",
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-001",
-      "gemini-1.5-flash-002",
-      "gemini-1.5-pro",
-      "gemini-1.0-pro",
-      "gemini-pro"
-    ];
+    // 1. Preguntamos directo a la API: "¿Qué modelos tienes?"
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      { method: 'GET' }
+    );
 
-    const results: Record<string, string> = {};
+    const data = await response.json();
 
-    // Probamos todos uno por uno rápido
-    for (const modelName of candidates) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        // Intentamos generar 1 token para ver si existe
-        await model.generateContent("Hola"); 
-        results[modelName] = "✅ DISPONIBLE";
-      } catch (e: any) {
-        if (e.message.includes("404")) results[modelName] = "❌ 404 NO ENCONTRADO";
-        else if (e.message.includes("429")) results[modelName] = "⚠️ 429 CUOTA LLENA (Pero existe)";
-        else results[modelName] = `❌ ERROR: ${e.message.substring(0, 50)}...`;
-      }
+    if (data.error) {
+        return NextResponse.json({ 
+            status: "❌ ERROR DE CUENTA", 
+            mensaje: data.error.message 
+        });
     }
 
-    return NextResponse.json({ diagnostico: results });
+    // 2. Filtramos solo los que sirven para chatear ("generateContent")
+    const chatModels = data.models
+        ?.filter((m: any) => m.supportedGenerationMethods.includes("generateContent"))
+        .map((m: any) => m.name);
+
+    return NextResponse.json({ 
+        status: "✅ CONEXIÓN EXITOSA", 
+        modelos_disponibles: chatModels || "Ninguno encontrado 🤡" 
+    });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message });

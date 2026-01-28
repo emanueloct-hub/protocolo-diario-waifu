@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@vercel/postgres": "^0.10.0",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "groq-sdk": "^0.37.0",
