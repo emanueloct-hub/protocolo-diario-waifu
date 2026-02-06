@@ -11,11 +11,11 @@ const RUTINAS_POR_FECHA = [
       1: "🔥 PECHO: (4) Press H. Manc vs (15) Preck Fly Inc | (11) Lagartijas 5x15 | (6) Press Inc. Art vs (2) Press H. Art",
       2: "🔥 HOMBRO: (4) Press Mil. Manc vs (12) Lat. Máq | (14) Bco Inc Lat vs (22) Frontal Barra | (36) Post. Bco Inc",
       3: "🔥 BRAZO: B:(8) Martillo Giro vs (11) Predic vs (17) Jalón | T:(24) Ext Máq vs (1) Francés Z vs (11) Fondos",
-      4: "🔥 PIERNA: (20) Hack Art. Abierta vs (6) Sumo | (26) Ext vs (27) Ext 1p | (32) PM Manc vs (41) Abductor",
+      4: "🔥 PIERNA: (20) Prensa 1 pie vs (6) Sentadillan Sumo | (26) Extension vs (27) Extension 1p | (32) Peso M Manc vs (41) Abductor",
       5: "🔥 ESPALDA: (2) Jalón Frente vs (13) Remo Baja | (11) Dom. Asistidas 5x15 | (8) Hammer vs (28) Pull Over Cuerda",
       6: "🏃 SÁBADO: Cardio o Pendientes",
       0: "💤 DOMINGO: Descanso Total"
-    }
+    } 
   },
   // 👇 AQUÍ ES DONDE PEGARÁS EL BLOQUE DE MARZO CUANDO LLEGUE EL MOMENTO 👇
   /*
