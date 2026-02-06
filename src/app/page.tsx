@@ -5,7 +5,7 @@ import { Book, Gamepad2, Dumbbell, Send, Sparkles, Trophy, X, Save, RefreshCw } 
 // @ts-ignore
 import confetti from 'canvas-confetti';
 
-const APP_VERSION = "v6.0 (Vertical Frame Layout)"; 
+const APP_VERSION = "v6.1 (Force Deploy)"; 
 
 // --- Tipos ---
 type Habit = {
