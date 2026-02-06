@@ -40,5 +40,3 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Waifu Protocol Assets (Privado)
-public/assets/img/
