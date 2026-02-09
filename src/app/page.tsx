@@ -232,6 +232,9 @@ export default function WaifuProtocol() {
                           {habit.completed ? (<div className="bg-cyan-500 text-black font-bold px-3 py-1 rounded-full text-xs shadow-lg animate-bounce">COMPLETED</div>) : (<div className="text-xs text-pink-500 font-mono animate-pulse">LOCKED</div>)}
                       </div>
                       <h3 className={`text-2xl font-black uppercase italic tracking-wider ${habit.completed ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]' : 'text-slate-400'}`}>{habit.title}</h3>
+                      <p className="text-sm font-medium text-cyan-200/90 mt-1 mb-2 drop-shadow-md bg-black/40 px-2 py-1 rounded inline-block backdrop-blur-sm">
+                        {habit.description}
+                      </p>
                       <div className="w-full h-1 bg-white/10 mt-3 rounded-full overflow-hidden"><div className={`h-full transition-all duration-700 ${habit.completed ? 'w-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]' : 'w-0'}`} /></div>
                   </div>
               </div>
