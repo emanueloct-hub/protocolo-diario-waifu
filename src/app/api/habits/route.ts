@@ -12,7 +12,7 @@ const RUTINAS_POR_FECHA = [
       2: "🔥 HOMBRO: (4) Press Milititar con Manc vs (12) Laterales Máq | (14) Banco Inclinado Lateral vs (22) Banco inclinado lev Frontal Barra | (36) Banco Inc Posteriores",
       3: "🔥 BRAZO: B:(8) Martillo Giro vs (11) Predicador abierto vs (17) Jalón recto p/b | T:(24) Extension Máq vs (1) Press Francés barra Z vs (11) Fondos",
       4: "🔥 PIERNA: (20) Prensa 1 pie vs (6) Sentadillan Sumo | (26) Extension vs (27) Extension 1p | (32) Peso M Manc vs (41) Abductor B",
-      5: "🔥 ESPALDA: (2) Jalón al Frente vs (13) Remo Baja Agarre Abierto | (11) Dom. Asistidas 5x15 | (8) Hammer vs (28) Pull Over Cuerda",
+      5: "🔥 ESPALDA: (2) Jalón al Frente vs (13) Remo Baja Agarre Abierto | (11) Domimandas Asistidas 5x15 | (8) Hammer vs (28) Pull Over Cuerda",
       6: "🏃 SÁBADO: Cardio o Pendientes",
       0: "💤 DOMINGO: Descanso Total"
     } 
