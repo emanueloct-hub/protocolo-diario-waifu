@@ -8,11 +8,11 @@ const RUTINAS_POR_FECHA = [
     inicio: "2026-01-28",
     fin: "2026-02-28",
     dias: {
-      1: "🔥 PECHO: (4) Press H. Manc vs (15) Preck Fly Inc | (11) Lagartijas 5x15 | (6) Press Inc. Art vs (2) Press H. Art",
-      2: "🔥 HOMBRO: (4) Press Mil. Manc vs (12) Lat. Máq | (14) Bco Inc Lat vs (22) Frontal Barra | (36) Post. Bco Inc",
-      3: "🔥 BRAZO: B:(8) Martillo Giro vs (11) Predic vs (17) Jalón | T:(24) Ext Máq vs (1) Francés Z vs (11) Fondos",
-      4: "🔥 PIERNA: (20) Prensa 1 pie vs (6) Sentadillan Sumo | (26) Extension vs (27) Extension 1p | (32) Peso M Manc vs (41) Abductor",
-      5: "🔥 ESPALDA: (2) Jalón Frente vs (13) Remo Baja | (11) Dom. Asistidas 5x15 | (8) Hammer vs (28) Pull Over Cuerda",
+      1: "🔥 PECHO: (4) Press Horizontal con Manc vs (15) Preck Fly Inc | (11) Lagartijas 5x15 | (6) Press Inclinado Articulado vs (2) Press Horizontal Art",
+      2: "🔥 HOMBRO: (4) Press Milititar con Manc vs (12) Laterales Máq | (14) Banco Inclinado Lateral vs (22) Banco inclinado lev Frontal Barra | (36) Banco Inc Posteriores",
+      3: "🔥 BRAZO: B:(8) Martillo Giro vs (11) Predicador abierto vs (17) Jalón recto p/b | T:(24) Extension Máq vs (1) Press Francés barra Z vs (11) Fondos",
+      4: "🔥 PIERNA: (20) Prensa 1 pie vs (6) Sentadillan Sumo | (26) Extension vs (27) Extension 1p | (32) Peso M Manc vs (41) Abductor B",
+      5: "🔥 ESPALDA: (2) Jalón al Frente vs (13) Remo Baja Agarre Abierto | (11) Dom. Asistidas 5x15 | (8) Hammer vs (28) Pull Over Cuerda",
       6: "🏃 SÁBADO: Cardio o Pendientes",
       0: "💤 DOMINGO: Descanso Total"
     } 
