@@ -4,10 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Book, Gamepad2, Dumbbell, Send, Sparkles, Trophy, X, Save, RefreshCw } from 'lucide-react';
 // @ts-ignore
 import confetti from 'canvas-confetti';
+// Asegúrate de que esta ruta sea correcta según donde guardaste el archivo
+import PlayerStats from '../components/PlayerStats'; 
 
-const APP_VERSION = "v6.1 (Force Deploy)"; 
+const APP_VERSION = "v7.0 (RPG Update)"; 
 
-// --- Tipos ---
+// --- TIPOS ---
 type Habit = {
   id: number;
   title: string;
@@ -22,6 +24,34 @@ type Habit = {
 type Message = { id: number; role: 'user' | 'assistant'; text: string; };
 type AIProvider = 'groq' | 'gemini';
 
+// --- COMPONENTE TOAST (Notificación Flotante) ---
+const RPGToast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000); // Se va solito a los 3 segundos
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed bottom-8 right-8 z-50 flex items-center gap-3 px-6 py-4 rounded-xl border backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-5 duration-300 ${
+      type === 'success' 
+        ? 'bg-slate-900/90 border-green-500/50 text-green-400' 
+        : 'bg-red-900/90 border-red-500/50 text-red-200'
+    }`}>
+      <div className={`p-2 rounded-full ${type === 'success' ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+        {type === 'success' ? <Trophy size={20} /> : <X size={20} />}
+      </div>
+      <div>
+        <h4 className="font-bold text-sm tracking-wider">{type === 'success' ? 'SYSTEM UPDATE' : 'SYSTEM ERROR'}</h4>
+        <p className="text-xs font-mono opacity-80">{message}</p>
+      </div>
+      {/* Barrita de tiempo */}
+      <div className={`absolute bottom-0 left-0 h-1 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-[width_3s_linear_forwards] w-full`} />
+    </div>
+  );
+};
+
 // ==================================================================================
 // ZONA DE CONFIGURACIÓN DE IMÁGENES
 // ==================================================================================
@@ -32,7 +62,6 @@ const GYM_IMAGES = [
   '/assets/img/00031-4109231265.png', '/assets/img/00032-4109231265.png', '/assets/img/00033-4109231265.png'
 ];
 
-// ESTAS SON LAS QUE SE VERÁN EN EL MARCO VERTICAL ROTATIVO
 const CODE_IMAGES = [
   '/assets/img/00034-4109231265.png', '/assets/img/00035-4109231265.png', '/assets/img/00036-4109231265.png',
   '/assets/img/00038-4109231265.png', '/assets/img/00040-4109231265.png', '/assets/img/00042-4109231265.png',
@@ -50,6 +79,9 @@ const STUDY_IMAGES = [
 ];
 const DEFAULT_FALLBACK = '/assets/img/00001-2297212208.png';
 
+// ==================================================================================
+// COMPONENTE PRINCIPAL
+// ==================================================================================
 export default function WaifuProtocol() {
   const [mounted, setMounted] = useState(false);
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -57,8 +89,10 @@ export default function WaifuProtocol() {
   
   // Estado para imágenes fijas (fila de arriba)
   const [fixedHabitImages, setFixedHabitImages] = useState<Record<number, string>>({});
-  // NUEVO: Estado para el índice de rotación del hábito especial
+  // Estado para el índice de rotación del hábito especial
   const [rotatedIndices, setRotatedIndices] = useState<Record<number, number>>({});
+  // Estado para Notificaciones (Toasts)
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null);
 
   // Chat & System
   const [messages, setMessages] = useState<Message[]>([{ id: 1, role: 'assistant', text: `Layout Vertical activado. ¿Qué vamos a construir hoy? 🏗️` }]);
@@ -71,6 +105,11 @@ export default function WaifuProtocol() {
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [logValue, setLogValue] = useState('');
   const [logNotes, setLogNotes] = useState('');
+
+  // Helper para mostrar Toast
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+  };
 
   useEffect(() => { setMounted(true); fetchHabits(); }, []);
 
@@ -88,13 +127,12 @@ export default function WaifuProtocol() {
     return pool[Math.floor(Math.random() * pool.length)];
   };
 
-  // NUEVO: Función para rotar la imagen manualmente o al completar
   const handleImageRotation = (e: React.MouseEvent, habitId: number, iconKey: string) => {
-    e.stopPropagation(); // Evita que se abra el modal al dar clic en rotar
+    e.stopPropagation();
     const pool = getPoolForIcon(iconKey);
     setRotatedIndices(prev => ({
       ...prev,
-      [habitId]: ((prev[habitId] || 0) + 1) % pool.length // Suma 1 y da la vuelta
+      [habitId]: ((prev[habitId] || 0) + 1) % pool.length
     }));
   };
 
@@ -106,7 +144,6 @@ export default function WaifuProtocol() {
       
       if (data.habits) {
         setHabits(data.habits);
-        // Asignar imágenes fijas solo a los de arriba la primera vez
         setFixedHabitImages(prev => {
           const newImages = { ...prev };
           data.habits.forEach((h: Habit) => {
@@ -139,7 +176,7 @@ export default function WaifuProtocol() {
         await fetchHabits(); 
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         
-        // NUEVO: Si es el hábito especial, rotar su imagen al completar
+        // Rotar imagen si es el hábito especial
         if (selectedHabit.icon_key === 'gamepad') {
             const pool = getPoolForIcon(selectedHabit.icon_key);
             setRotatedIndices(prev => ({
@@ -148,13 +185,17 @@ export default function WaifuProtocol() {
             }));
         }
 
+        // Mostrar notificación épica en lugar de alert
+        showToast(`Misión "${selectedHabit.title}" completada. XP Ganada.`, 'success');
+
         setSelectedHabit(null);
         handleAutoChat(`Completé "${selectedHabit.title}" con ${logValue}. Notas: "${logNotes}". Actúa como ${selectedHabit.ai_persona} y felicítame brevemente.`);
       }
-    } catch (error) { alert("Error al guardar ☁️❌"); }
+    } catch (error) { 
+        showToast("Error de conexión con el servidor ☁️❌", 'error'); 
+    }
   };
 
-  // --- CHAT HELPERS (Igual que antes) ---
   const handleAutoChat = async (prompt: string) => {
     setIsLoading(true);
     try {
@@ -178,7 +219,6 @@ export default function WaifuProtocol() {
   if (!mounted) return null;
   const progress = Math.round((habits.filter(h => h.completed).length / (habits.length || 1)) * 100);
 
-  // --- SEPARACIÓN DE HÁBITOS PARA EL LAYOUT ---
   const topRowHabits = habits.filter(h => h.icon_key !== 'gamepad');
   const specialHabit = habits.find(h => h.icon_key === 'gamepad');
 
@@ -186,7 +226,7 @@ export default function WaifuProtocol() {
     <div className="min-h-screen bg-black text-white font-sans selection:bg-pink-500/50 relative overflow-x-hidden">
       <div className="fixed inset-0 z-0 opacity-20 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,_#330033_0%,_#000000_100%)]"></div>
 
-      {/* --- MODAL (Sin cambios) --- */}
+      {/* --- MODAL DE REGISTRO --- */}
       {selectedHabit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
             <div className="bg-slate-900/90 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-[0_0_50px_rgba(236,72,153,0.3)]">
@@ -204,8 +244,10 @@ export default function WaifuProtocol() {
       )}
 
       <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
         {/* COLUMNA IZQUIERDA (HÁBITOS) */}
         <div className="lg:col-span-2 space-y-8">
+          
           <header className="flex justify-between items-end pb-4 border-b border-white/10">
             <div>
               <h1 className="text-4xl font-black italic tracking-tighter bg-gradient-to-r from-white via-cyan-200 to-pink-300 bg-clip-text text-transparent flex items-center gap-3">PROTOCOL <span className="text-pink-500">WAIFU</span></h1>
@@ -214,11 +256,9 @@ export default function WaifuProtocol() {
              <div className="flex flex-col items-end"><span className="text-xs text-slate-500 font-mono block">DAILY STREAK</span><span className="text-3xl font-black text-white">{streak} <span className="text-orange-500 text-lg">DAYS</span></span></div>
           </header>
 
-          <div className="relative h-6 w-full bg-slate-900 rounded-full overflow-hidden border border-white/5 shadow-inner">
-             <div className="h-full bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-500 shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all duration-1000 ease-out" style={{ width: `${progress}%` }} />
-             <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tracking-widest text-white mix-blend-difference">SYNC RATE: {progress}%</div>
-          </div>
-
+          {/* AQUÍ ESTÁ EL COMPONENTE RPG NUEVO */}
+          <PlayerStats habits={habits} />
+          
           {/* --- FILA SUPERIOR (Grid de 2 para Estudio y Gym) --- */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {topRowHabits.map((habit) => (
@@ -232,16 +272,14 @@ export default function WaifuProtocol() {
                           {habit.completed ? (<div className="bg-cyan-500 text-black font-bold px-3 py-1 rounded-full text-xs shadow-lg animate-bounce">COMPLETED</div>) : (<div className="text-xs text-pink-500 font-mono animate-pulse">LOCKED</div>)}
                       </div>
                       <h3 className={`text-2xl font-black uppercase italic tracking-wider ${habit.completed ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]' : 'text-slate-400'}`}>{habit.title}</h3>
-                      <p className="text-sm font-medium text-cyan-200/90 mt-1 mb-2 drop-shadow-md bg-black/40 px-2 py-1 rounded inline-block backdrop-blur-sm">
-                        {habit.description}
-                      </p>
-                      <div className="w-full h-1 bg-white/10 mt-3 rounded-full overflow-hidden"><div className={`h-full transition-all duration-700 ${habit.completed ? 'w-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]' : 'w-0'}`} /></div>
+                      <p className={`text-sm font-medium mt-1 mb-3 px-2 py-1 rounded-md inline-block backdrop-blur-sm line-clamp-2 ${habit.completed ? 'text-cyan-100 bg-cyan-900/40 border border-cyan-500/30' : 'text-slate-300 bg-black/60 border border-white/10'}`}>{habit.description}</p>
+                      <div className="w-full h-1 bg-white/10 mt-1 rounded-full overflow-hidden"><div className={`h-full transition-all duration-700 ${habit.completed ? 'w-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]' : 'w-0'}`} /></div>
                   </div>
               </div>
             ))}
           </div>
 
-          {/* --- NUEVO MARCO VERTICAL PARA CÓDIGO (Abajo) --- */}
+          {/* --- MARCO VERTICAL PARA CÓDIGO (Abajo) --- */}
           {specialHabit && (
             (() => {
               const pool = getPoolForIcon(specialHabit.icon_key);
@@ -251,9 +289,7 @@ export default function WaifuProtocol() {
               return (
                 <div 
                   key={specialHabit.id}
-                  // Clic en la tarjeta abre el modal para registrar
                   onClick={() => handleHabitClick(specialHabit)}
-                  // Clase 'aspect-[2/3]' para hacerlo vertical tipo póster
                   className={`group relative aspect-[2/3] w-full rounded-3xl border-2 transition-all duration-500 overflow-hidden flex flex-col justify-between
                     ${specialHabit.completed 
                       ? 'border-purple-500 shadow-[0_0_40px_rgba(168,85,247,0.5)] cursor-default scale-[1.01]' 
@@ -277,7 +313,6 @@ export default function WaifuProtocol() {
                       <div className={`p-3 rounded-xl backdrop-blur-md border ${specialHabit.completed ? 'bg-purple-500/20 border-purple-400/50 text-purple-200' : 'bg-black/40 border-white/10 text-slate-300'}`}>
                           {getIcon(specialHabit.icon_key)}
                       </div>
-                      {/* BOTÓN DE ROTACIÓN MANUAL */}
                       <button 
                         onClick={(e) => handleImageRotation(e, specialHabit.id, specialHabit.icon_key)}
                         className="p-3 rounded-full bg-black/50 hover:bg-purple-500/50 border border-white/10 hover:border-purple-400 text-white transition-all shadow-lg hover:rotate-180 duration-500 group-hover:scale-110"
@@ -290,19 +325,11 @@ export default function WaifuProtocol() {
                     {/* Footer de la tarjeta especial */}
                     <div className="relative z-20 p-8 pt-0 text-center">
                         {specialHabit.completed ? (
-                            <div className="inline-block bg-purple-500 text-black font-bold px-4 py-1 rounded-full text-sm shadow-lg animate-bounce mb-2">
-                                MISSION ACCOMPLISHED
-                            </div>
+                            <div className="inline-block bg-purple-500 text-black font-bold px-4 py-1 rounded-full text-sm shadow-lg animate-bounce mb-2">MISSION ACCOMPLISHED</div>
                         ) : (
-                            <div className="text-sm text-purple-400 font-mono animate-pulse mb-2">
-                                LOCKED // DEV MODE
-                            </div>
+                            <div className="text-sm text-purple-400 font-mono animate-pulse mb-2">LOCKED // DEV MODE</div>
                         )}
-
-                        <h3 className={`text-4xl font-black uppercase italic tracking-wider ${specialHabit.completed ? 'text-white drop-shadow-[0_4px_8px_rgba(0,0,0,1)]' : 'text-slate-400'}`}>
-                            {specialHabit.title}
-                        </h3>
-                        
+                        <h3 className={`text-4xl font-black uppercase italic tracking-wider ${specialHabit.completed ? 'text-white drop-shadow-[0_4px_8px_rgba(0,0,0,1)]' : 'text-slate-400'}`}>{specialHabit.title}</h3>
                         <div className="w-full h-2 bg-white/10 mt-4 rounded-full overflow-hidden mx-auto max-w-md">
                             <div className={`h-full transition-all duration-700 ${specialHabit.completed ? 'w-full bg-purple-400 shadow-[0_0_15px_#a855f7]' : 'w-0'}`} />
                         </div>
@@ -315,7 +342,7 @@ export default function WaifuProtocol() {
           {habits.length === 0 && (<div className="p-12 text-center text-slate-600 border border-slate-800 border-dashed rounded-3xl"><Sparkles className="animate-spin inline mb-4"/> Cargando...</div>)}
         </div>
 
-        {/* CHATBOT LATERAL (Sin cambios) */}
+        {/* CHATBOT LATERAL */}
         <div className="h-[600px] lg:h-auto bg-slate-900/80 border border-slate-700 rounded-3xl flex flex-col overflow-hidden shadow-2xl relative backdrop-blur-xl">
             <div className="bg-black/50 p-4 border-b border-slate-700 flex items-center justify-between backdrop-blur-md">
                 <div className="flex items-center gap-3"><div className="relative"><div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shadow-lg">AI</div><span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></span></div><div><h3 className="font-bold text-white text-sm">System Operator</h3><span className="text-[10px] text-slate-400 font-mono">v6.0 Stable</span></div></div>
@@ -329,6 +356,16 @@ export default function WaifuProtocol() {
             <form onSubmit={handleSend} className="p-4 bg-black/40 border-t border-slate-700"><div className="relative"><input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Escribe un comando..." className="w-full bg-slate-800/50 text-white pl-4 pr-12 py-4 rounded-xl border border-slate-700 focus:outline-none focus:border-pink-500 transition-all placeholder:text-slate-600 text-sm" /><button type="submit" className="absolute right-3 top-3 p-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg transition-colors shadow-lg shadow-pink-500/20"><Send size={16} /></button></div></form>
         </div>
       </div>
+
+      {/* RENDERIZADO DEL TOAST AQUÍ ABAJO */}
+      {toast && toast.show && (
+        <RPGToast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+
     </div>
   );
 }
