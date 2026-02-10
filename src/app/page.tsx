@@ -4,10 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Book, Gamepad2, Dumbbell, Send, Sparkles, Trophy, X, Save, RefreshCw } from 'lucide-react';
 // @ts-ignore
 import confetti from 'canvas-confetti';
-// Asegúrate de que esta ruta sea correcta según donde guardaste el archivo
 import PlayerStats from '../components/PlayerStats'; 
 
-const APP_VERSION = "v7.0 (RPG Update)"; 
+const APP_VERSION = "v8.0 (Img Gen + RPG)"; 
 
 // --- TIPOS ---
 type Habit = {
@@ -29,7 +28,7 @@ const RPGToast = ({ message, type, onClose }: { message: string; type: 'success'
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 3000); // Se va solito a los 3 segundos
+    }, 3000); 
     return () => clearTimeout(timer);
   }, [onClose]);
 
@@ -46,7 +45,6 @@ const RPGToast = ({ message, type, onClose }: { message: string; type: 'success'
         <h4 className="font-bold text-sm tracking-wider">{type === 'success' ? 'SYSTEM UPDATE' : 'SYSTEM ERROR'}</h4>
         <p className="text-xs font-mono opacity-80">{message}</p>
       </div>
-      {/* Barrita de tiempo */}
       <div className={`absolute bottom-0 left-0 h-1 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-[width_3s_linear_forwards] w-full`} />
     </div>
   );
@@ -89,13 +87,13 @@ export default function WaifuProtocol() {
   
   // Estado para imágenes fijas (fila de arriba)
   const [fixedHabitImages, setFixedHabitImages] = useState<Record<number, string>>({});
-  // Estado para el índice de rotación del hábito especial
+  // Estado para rotación
   const [rotatedIndices, setRotatedIndices] = useState<Record<number, number>>({});
-  // Estado para Notificaciones (Toasts)
+  // Estado para Toasts
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null);
 
   // Chat & System
-  const [messages, setMessages] = useState<Message[]>([{ id: 1, role: 'assistant', text: `Layout Vertical activado. ¿Qué vamos a construir hoy? 🏗️` }]);
+  const [messages, setMessages] = useState<Message[]>([{ id: 1, role: 'assistant', text: `Sistema v8.0 Online. ¿Qué vamos a construir hoy? 🏗️` }]);
   const [input, setInput] = useState('');
   const [provider, setProvider] = useState<AIProvider>('groq');
   const [isLoading, setIsLoading] = useState(false);
@@ -106,7 +104,7 @@ export default function WaifuProtocol() {
   const [logValue, setLogValue] = useState('');
   const [logNotes, setLogNotes] = useState('');
 
-  // Helper para mostrar Toast
+  // Helper para Toast
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ show: true, message, type });
   };
@@ -185,9 +183,7 @@ export default function WaifuProtocol() {
             }));
         }
 
-        // Mostrar notificación épica en lugar de alert
         showToast(`Misión "${selectedHabit.title}" completada. XP Ganada.`, 'success');
-
         setSelectedHabit(null);
         handleAutoChat(`Completé "${selectedHabit.title}" con ${logValue}. Notas: "${logNotes}". Actúa como ${selectedHabit.ai_persona} y felicítame brevemente.`);
       }
@@ -203,15 +199,43 @@ export default function WaifuProtocol() {
         const data = await res.json(); if (data.reply) addMessage('assistant', data.reply);
     } catch (e) { console.error(e); } setIsLoading(false);
   };
+
   const addMessage = (role: 'user' | 'assistant', text: string) => setMessages(prev => [...prev, { id: Date.now(), role, text }]);
+
+  // --- HANDLE SEND CON IMÁGENES ---
   const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!input.trim()) return;
-    const msg = input; setInput(''); addMessage('user', msg); setIsLoading(true);
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const msg = input;
+    setInput('');
+    addMessage('user', msg);
+    setIsLoading(true);
+
+    // 1. DETECTOR DE COMANDO /img
+    if (msg.toLowerCase().startsWith('/img ')) {
+      const prompt = msg.slice(5);
+      // Link a Pollinations
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=768&nologo=true`;
+
+      setTimeout(() => {
+        addMessage('assistant', `IMAGE_GENERATED::${imageUrl}`);
+        setIsLoading(false);
+      }, 1500);
+      return; 
+    }
+
+    // 2. LÓGICA NORMAL
     try {
         const res = await fetch('/api/chat', { method: 'POST', body: JSON.stringify({ message: msg, provider: provider }) });
-        const data = await res.json(); if (data.reply) addMessage('assistant', data.reply);
-    } catch (e) { addMessage('assistant', 'Error de conexión ❌'); } setIsLoading(false);
+        const data = await res.json(); 
+        if (data.reply) addMessage('assistant', data.reply);
+    } catch (e) { 
+        addMessage('assistant', 'Error de conexión ❌'); 
+    } 
+    setIsLoading(false);
   };
+
   const getIcon = (key: string) => {
     if (key === 'book') return <Book />; if (key === 'gamepad') return <Gamepad2 />; if (key === 'dumbbell') return <Dumbbell />; return <Sparkles />;
   };
@@ -226,7 +250,7 @@ export default function WaifuProtocol() {
     <div className="min-h-screen bg-black text-white font-sans selection:bg-pink-500/50 relative overflow-x-hidden">
       <div className="fixed inset-0 z-0 opacity-20 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,_#330033_0%,_#000000_100%)]"></div>
 
-      {/* --- MODAL DE REGISTRO --- */}
+      {/* --- MODAL --- */}
       {selectedHabit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
             <div className="bg-slate-900/90 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-[0_0_50px_rgba(236,72,153,0.3)]">
@@ -245,7 +269,7 @@ export default function WaifuProtocol() {
 
       <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* COLUMNA IZQUIERDA (HÁBITOS) */}
+        {/* COLUMNA IZQUIERDA */}
         <div className="lg:col-span-2 space-y-8">
           
           <header className="flex justify-between items-end pb-4 border-b border-white/10">
@@ -256,10 +280,9 @@ export default function WaifuProtocol() {
              <div className="flex flex-col items-end"><span className="text-xs text-slate-500 font-mono block">DAILY STREAK</span><span className="text-3xl font-black text-white">{streak} <span className="text-orange-500 text-lg">DAYS</span></span></div>
           </header>
 
-          {/* AQUÍ ESTÁ EL COMPONENTE RPG NUEVO */}
           <PlayerStats habits={habits} />
           
-          {/* --- FILA SUPERIOR (Grid de 2 para Estudio y Gym) --- */}
+          {/* Grid Fila Superior */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {topRowHabits.map((habit) => (
               <div key={habit.id} onClick={() => handleHabitClick(habit)} className={`group relative h-64 rounded-2xl border transition-all duration-500 overflow-hidden flex flex-col justify-end ${habit.completed ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.4)] cursor-default scale-[1.01]' : 'border-slate-800 hover:border-pink-500 cursor-pointer hover:-translate-y-1'}`}>
@@ -279,7 +302,7 @@ export default function WaifuProtocol() {
             ))}
           </div>
 
-          {/* --- MARCO VERTICAL PARA CÓDIGO (Abajo) --- */}
+          {/* Marco Vertical */}
           {specialHabit && (
             (() => {
               const pool = getPoolForIcon(specialHabit.icon_key);
@@ -297,7 +320,6 @@ export default function WaifuProtocol() {
                     }
                   `}
                 >
-                    {/* IMAGEN DE FONDO ROTATIVA */}
                     <div 
                         className="absolute inset-0 z-0 transition-all duration-700 ease-in-out bg-cover bg-center bg-no-repeat"
                         style={{
@@ -308,7 +330,6 @@ export default function WaifuProtocol() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-90" />
                     </div>
                     
-                    {/* Header de la tarjeta especial */}
                     <div className="relative z-20 p-6 flex justify-between items-start">
                       <div className={`p-3 rounded-xl backdrop-blur-md border ${specialHabit.completed ? 'bg-purple-500/20 border-purple-400/50 text-purple-200' : 'bg-black/40 border-white/10 text-slate-300'}`}>
                           {getIcon(specialHabit.icon_key)}
@@ -316,13 +337,11 @@ export default function WaifuProtocol() {
                       <button 
                         onClick={(e) => handleImageRotation(e, specialHabit.id, specialHabit.icon_key)}
                         className="p-3 rounded-full bg-black/50 hover:bg-purple-500/50 border border-white/10 hover:border-purple-400 text-white transition-all shadow-lg hover:rotate-180 duration-500 group-hover:scale-110"
-                        title="Cambiar Vista"
                       >
                         <RefreshCw size={20} />
                       </button>
                     </div>
 
-                    {/* Footer de la tarjeta especial */}
                     <div className="relative z-20 p-8 pt-0 text-center">
                         {specialHabit.completed ? (
                             <div className="inline-block bg-purple-500 text-black font-bold px-4 py-1 rounded-full text-sm shadow-lg animate-bounce mb-2">MISSION ACCOMPLISHED</div>
@@ -345,19 +364,81 @@ export default function WaifuProtocol() {
         {/* CHATBOT LATERAL */}
         <div className="h-[600px] lg:h-auto bg-slate-900/80 border border-slate-700 rounded-3xl flex flex-col overflow-hidden shadow-2xl relative backdrop-blur-xl">
             <div className="bg-black/50 p-4 border-b border-slate-700 flex items-center justify-between backdrop-blur-md">
-                <div className="flex items-center gap-3"><div className="relative"><div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shadow-lg">AI</div><span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></span></div><div><h3 className="font-bold text-white text-sm">System Operator</h3><span className="text-[10px] text-slate-400 font-mono">v6.0 Stable</span></div></div>
-                <button onClick={() => setProvider(p => p === 'groq' ? 'gemini' : 'groq')} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors border border-slate-700 rounded px-2 py-1">Model: {provider}</button>
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shadow-lg">AI</div>
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></span>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-white text-sm">System Operator</h3>
+                        <span className="text-[10px] text-slate-400 font-mono">v8.0 (Img Gen)</span>
+                    </div>
+                </div>
+                <button 
+  onClick={() => setProvider(p => p === 'groq' ? 'gemini' : 'groq')} 
+  className={`text-[10px] font-bold uppercase tracking-wider transition-all border rounded px-3 py-1 ${
+    provider === 'groq' 
+      ? 'text-orange-400 border-orange-500/50 hover:bg-orange-900/30 shadow-[0_0_10px_rgba(251,146,60,0.2)]' 
+      : 'text-blue-400 border-blue-500/50 hover:bg-blue-900/30 shadow-[0_0_10px_rgba(96,165,250,0.2)]'
+  }`}
+>
+  Model: {provider}
+</button>
             </div>
+
             <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin scrollbar-thumb-pink-900 scrollbar-track-transparent">
-                {messages.map((msg) => (<div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-md ${msg.role === 'user' ? 'bg-gradient-to-r from-cyan-700 to-blue-700 text-white rounded-br-sm' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'}`}>{msg.text}</div></div>))}
-                {isLoading && (<div className="flex justify-start"><div className="bg-slate-800/50 rounded-2xl p-3 flex gap-1 items-center"><span className="w-2 h-2 bg-pink-500 rounded-full animate-bounce"></span><span className="w-2 h-2 bg-pink-500 rounded-full animate-bounce delay-75"></span><span className="w-2 h-2 bg-pink-500 rounded-full animate-bounce delay-150"></span></div></div>)}
+                {messages.map((msg) => (
+                    <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-md ${msg.role === 'user' ? 'bg-gradient-to-r from-cyan-700 to-blue-700 text-white rounded-br-sm' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'}`}>
+                            {msg.text.startsWith('IMAGE_GENERATED::') ? (
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-[10px] font-mono text-pink-400 tracking-widest border-b border-pink-500/20 pb-1 mb-1 flex items-center gap-2">
+                                        <Sparkles size={10} /> GENERATING ASSET...
+                                    </span>
+                                    <img 
+                                        src={msg.text.replace('IMAGE_GENERATED::', '')} 
+                                        alt="AI Generated Content" 
+                                        className="rounded-lg w-full h-auto border border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.2)] hover:scale-[1.02] transition-transform duration-300"
+                                        loading="lazy"
+                                    />
+                                </div>
+                            ) : (
+                                <span>{msg.text}</span>
+                            )}
+                        </div>
+                    </div>
+                ))}
+                
+                {isLoading && (
+                    <div className="flex justify-start">
+                        <div className="bg-slate-800/50 rounded-2xl p-3 flex gap-1 items-center">
+                            <span className="w-2 h-2 bg-pink-500 rounded-full animate-bounce"></span>
+                            <span className="w-2 h-2 bg-pink-500 rounded-full animate-bounce delay-75"></span>
+                            <span className="w-2 h-2 bg-pink-500 rounded-full animate-bounce delay-150"></span>
+                        </div>
+                    </div>
+                )}
                 <div ref={chatEndRef} />
             </div>
-            <form onSubmit={handleSend} className="p-4 bg-black/40 border-t border-slate-700"><div className="relative"><input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Escribe un comando..." className="w-full bg-slate-800/50 text-white pl-4 pr-12 py-4 rounded-xl border border-slate-700 focus:outline-none focus:border-pink-500 transition-all placeholder:text-slate-600 text-sm" /><button type="submit" className="absolute right-3 top-3 p-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg transition-colors shadow-lg shadow-pink-500/20"><Send size={16} /></button></div></form>
+
+            <form onSubmit={handleSend} className="p-4 bg-black/40 border-t border-slate-700">
+                <div className="relative">
+                    <input 
+                        type="text" 
+                        value={input} 
+                        onChange={(e) => setInput(e.target.value)} 
+                        placeholder="Escribe /img cyberpunk city..." 
+                        className="w-full bg-slate-800/50 text-white pl-4 pr-12 py-4 rounded-xl border border-slate-700 focus:outline-none focus:border-pink-500 transition-all placeholder:text-slate-600 text-sm" 
+                    />
+                    <button type="submit" className="absolute right-3 top-3 p-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg transition-colors shadow-lg shadow-pink-500/20">
+                        <Send size={16} />
+                    </button>
+                </div>
+            </form>
         </div>
       </div>
 
-      {/* RENDERIZADO DEL TOAST AQUÍ ABAJO */}
+      {/* TOASTS RENDER */}
       {toast && toast.show && (
         <RPGToast 
           message={toast.message} 
